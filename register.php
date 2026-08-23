@@ -18,7 +18,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $firstName = trim($_POST['first_name'] ?? '');
     $lastName = trim($_POST['last_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
-    $department = trim($_POST['department'] ?? '');
     $position = trim($_POST['position'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
@@ -37,10 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'A valid email address is required.';
-    }
-
-    if ($department === '') {
-        $errors[] = 'Department is required.';
     }
 
     if (strlen($password) < 8) {
@@ -68,9 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $insertStatement = $pdo->prepare(
                 'INSERT INTO users
-                (employee_id, first_name, last_name, email, password, department, position)
+                (employee_id, first_name, last_name, email, password, position)
                 VALUES
-                (:employee_id, :first_name, :last_name, :email, :password, :department, :position)'
+                (:employee_id, :first_name, :last_name, :email, :password, :position)'
             );
 
             $insertStatement->execute([
@@ -79,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'last_name' => $lastName,
                 'email' => $email,
                 'password' => $hashedPassword,
-                'department' => $department,
                 'position' => $position !== '' ? $position : null
             ]);
 
@@ -140,15 +134,6 @@ require_once __DIR__ . '/includes/header.php';
             id="email"
             name="email"
             value="<?= e($_POST['email'] ?? '') ?>"
-            required
-        >
-
-        <label for="department">Department</label>
-        <input
-            type="text"
-            id="department"
-            name="department"
-            value="<?= e($_POST['department'] ?? '') ?>"
             required
         >
 

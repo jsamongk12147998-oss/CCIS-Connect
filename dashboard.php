@@ -12,7 +12,7 @@ $userId = (int) $_SESSION['user_id'];
 
 $userStatement = $pdo->prepare(
     'SELECT employee_id, first_name, last_name, email,
-            department, position, role
+            position, role
      FROM users
      WHERE id = :id
      LIMIT 1'
@@ -80,8 +80,7 @@ require_once __DIR__ . '/includes/header.php';
     <div>
         <h1>Welcome, <?= e($user['first_name']) ?>!</h1>
         <p>
-            <?= e($user['position'] ?? 'Faculty Member') ?> —
-            <?= e($user['department']) ?>
+            <?= e($user['position'] ?? 'Faculty Member') ?>
         </p>
     </div>
 
@@ -107,11 +106,6 @@ require_once __DIR__ . '/includes/header.php';
         <p>
             <strong>Email:</strong>
             <?= e($user['email']) ?>
-        </p>
-
-        <p>
-            <strong>Department:</strong>
-            <?= e($user['department']) ?>
         </p>
 
         <p>

@@ -28,7 +28,6 @@ CREATE TABLE users (
 
     password VARCHAR(255) NOT NULL,
 
-    department VARCHAR(150) NOT NULL,
     position VARCHAR(150) DEFAULT NULL,
 
     role ENUM('faculty', 'administrator')
@@ -599,7 +598,6 @@ INSERT INTO users (
     last_name,
     email,
     password,
-    department,
     position,
     role,
     status
@@ -610,7 +608,6 @@ INSERT INTO users (
     'Administrator',
     'admin@ccis.local',
     '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llCqRZ5T6Y6Qx5Vf3v8Xe',
-    'CCIS Administration',
     'System Administrator',
     'administrator',
     'active'
@@ -621,7 +618,6 @@ INSERT INTO users (
     'Dela Cruz',
     'juan.delacruz@ccis.local',
     '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llCqRZ5T6Y6Qx5Vf3v8Xe',
-    'Computer Studies',
     'Faculty Member',
     'faculty',
     'active'
@@ -632,7 +628,6 @@ INSERT INTO users (
     'Santos',
     'maria.santos@ccis.local',
     '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llCqRZ5T6Y6Qx5Vf3v8Xe',
-    'Information Technology',
     'Associate Professor',
     'faculty',
     'active'
@@ -643,7 +638,6 @@ INSERT INTO users (
     'Reyes',
     'pedro.reyes@ccis.local',
     '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llCqRZ5T6Y6Qx5Vf3v8Xe',
-    'Information Systems',
     'Assistant Professor',
     'faculty',
     'active'

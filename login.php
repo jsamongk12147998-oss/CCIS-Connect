@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $statement = $pdo->prepare(
             'SELECT id, employee_id, first_name, last_name, email,
-                    password, department, position, role, status
+                    password, position, role, status
              FROM users
              WHERE email = :email
              LIMIT 1'

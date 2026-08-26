@@ -34,10 +34,40 @@ body {
     font-weight: bold;
 }
 
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 nav a {
     color: white;
     text-decoration: none;
-    margin-left: 10px;
+}
+
+.create-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 5px;
+}
+
+.plus-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 2px;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.create-button:hover {
+    background: rgba(255, 255, 255, 0.12);
 }
 
 main.container {

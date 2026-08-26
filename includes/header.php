@@ -21,8 +21,14 @@ if (session_status() === PHP_SESSION_NONE) {
         <a href="dashboard.php" class="brand">CCIS Connect</a>
 
         <?php if (isset($_SESSION['user_id'])): ?>
-            <nav>
-                <a href="dashboard.php">Dashboard</a>
+            <nav class="topbar-actions">
+                <?php if (($pageTitle ?? '') !== 'Dashboard'): ?>
+                    <a href="dashboard.php">Dashboard</a>
+                <?php endif; ?>
+                <a href="#" class="create-button">
+                    <span class="plus-icon" aria-hidden="true">+</span>
+                    Create
+                </a>
                 <a href="logout.php">Logout</a>
             </nav>
         <?php endif; ?>

@@ -102,6 +102,15 @@ require_once __DIR__ . '/includes/header.php';
         >
 
         <button type="submit" class="button">Login</button>
+        <a href="#" class="button button-google">
+            <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="margin-right: 10px;">
+              <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.3l6.8-6.8C35.5 2.6 30.2 0 24 0 14.8 0 7 5.4 3 13.5l8.1 6.3C13.2 12.6 18 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.5 24.5c0-1.5-.1-3-0.4-4.5H24v9h12.7c-0.6 3-2.3 5.5-4.8 7.2l8.1 6.3C43.5 37.5 46.5 31.5 46.5 24.5z"/>
+              <path fill="#FBBC05" d="M11.1 28.5C10.5 27 10 25.5 10 24s0.5-3 1.1-4.5L3 13.2C1.1 17.1 0 21.5 0 26s1.1 8.9 3 12.8l8.1-6.3z"/>
+              <path fill="#34A853" d="M24 48c6.5 0 12-2.2 16-5.8l-8.1-6.3c-2.3 1.5-5.2 2.4-8.2 2.4-6 0-11.1-4-12.9-9.5l-8.1 6.3C7 42.6 14.8 48 24 48z"/>
+            </svg>
+            Continue with Google
+        </a>
     </form>
 
     <p class="form-link">

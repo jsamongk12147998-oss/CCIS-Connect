@@ -104,6 +104,21 @@ select {
     background: #0f4f82;
 }
 
+.button.button-google {
+    background: white;
+    color: #5f6368;
+    border: 1px solid #1769aa;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.button.button-google:hover {
+    background: #f8f9fa;
+    color: #3c4043;
+}
+
 .button.small {
     padding: 8px 12px;
     font-size: 14px;

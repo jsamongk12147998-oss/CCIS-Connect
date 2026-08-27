@@ -29,7 +29,15 @@ if (session_status() === PHP_SESSION_NONE) {
                     <span class="plus-icon" aria-hidden="true">+</span>
                     Create
                 </a>
-                <a href="logout.php">Logout</a>
+                <details class="profile-menu">
+                    <summary class="profile-button" aria-label="Open profile menu">
+                        <img src="assets/user-regular.png" alt="Profile">
+                    </summary>
+                    <div class="profile-popup">
+                        <button type="button" class="profile-action">Edit Profile</button>
+                        <a href="logout.php" class="profile-action">Logout</a>
+                    </div>
+                </details>
             </nav>
         <?php endif; ?>
     </div>

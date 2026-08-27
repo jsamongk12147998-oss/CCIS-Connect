@@ -70,6 +70,63 @@ nav a {
     background: rgba(255, 255, 255, 0.12);
 }
 
+.profile-menu {
+    position: relative;
+}
+
+.profile-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 2px solid white;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    list-style: none;
+}
+
+.profile-button::-webkit-details-marker {
+    display: none;
+}
+
+.profile-button img {
+    width: 21px;
+    height: 21px;
+    object-fit: contain;
+}
+
+.profile-popup {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 10;
+    min-width: 150px;
+    padding: 6px;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.profile-action {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    border: none;
+    background: transparent;
+    color: #1f2937;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.profile-action:hover {
+    background: #f1f5f9;
+}
+
 main.container {
     min-height: calc(100vh - 130px);
     padding-top: 30px;

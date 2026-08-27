@@ -25,10 +25,17 @@ if (session_status() === PHP_SESSION_NONE) {
                 <?php if (($pageTitle ?? '') !== 'Dashboard'): ?>
                     <a href="dashboard.php">Dashboard</a>
                 <?php endif; ?>
-                <a href="#" class="create-button">
-                    <span class="plus-icon" aria-hidden="true">+</span>
-                    Create
-                </a>
+                <details class="create-menu">
+                    <summary class="create-button">
+                        <span class="plus-icon" aria-hidden="true">+</span>
+                        Create
+                    </summary>
+                    <div class="create-popup">
+                        <button type="button" class="create-action">Create an Event</button>
+                        <button type="button" class="create-action">Schedule a Meeting</button>
+                        <button type="button" class="create-action">Create a Group</button>
+                    </div>
+                </details>
                 <details class="profile-menu">
                     <summary class="profile-button" aria-label="Open profile menu">
                         <img src="assets/user-regular.png" alt="Profile">

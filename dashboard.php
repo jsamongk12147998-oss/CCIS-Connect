@@ -10,6 +10,71 @@ requireLogin();
 $pageTitle = 'Dashboard';
 $userId = (int) $_SESSION['user_id'];
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    $postId = (int) ($_POST['post_id'] ?? 0);
+
+    if ($action === 'create_post') {
+        $postContent = trim((string) ($_POST['post_content'] ?? ''));
+
+        if ($postContent !== '') {
+            $postStatement = $pdo->prepare(
+                'INSERT INTO posts (user_id, content, status)
+                 VALUES (:user_id, :content, "published")'
+            );
+            $postStatement->execute([
+                'user_id' => $userId,
+                'content' => $postContent,
+            ]);
+        }
+
+        header('Location: dashboard.php#community-feed');
+        exit;
+    }
+
+    if ($action === 'react' && $postId > 0) {
+        $reactionLookup = $pdo->prepare(
+            'SELECT id FROM reactions WHERE post_id = :post_id AND user_id = :user_id'
+        );
+        $reactionLookup->execute(['post_id' => $postId, 'user_id' => $userId]);
+        $reactionId = $reactionLookup->fetchColumn();
+
+        if ($reactionId) {
+            $reactionStatement = $pdo->prepare('DELETE FROM reactions WHERE id = :id');
+            $reactionStatement->execute(['id' => $reactionId]);
+        } else {
+            $reactionStatement = $pdo->prepare(
+                'INSERT INTO reactions (post_id, user_id, reaction_type)
+                 VALUES (:post_id, :user_id, :reaction_type)'
+            );
+            $reactionStatement->execute([
+                'post_id' => $postId,
+                'user_id' => $userId,
+                'reaction_type' => 'like',
+            ]);
+        }
+    }
+
+    if ($action === 'comment' && $postId > 0) {
+        $commentContent = trim((string) ($_POST['comment_content'] ?? ''));
+
+        if ($commentContent !== '') {
+            $commentStatement = $pdo->prepare(
+                'INSERT INTO comments (post_id, user_id, comment_content)
+                 VALUES (:post_id, :user_id, :comment_content)'
+            );
+            $commentStatement->execute([
+                'post_id' => $postId,
+                'user_id' => $userId,
+                'comment_content' => $commentContent,
+            ]);
+        }
+    }
+
+    header('Location: dashboard.php#community-feed');
+    exit;
+}
+
 $userStatement = $pdo->prepare(
     'SELECT employee_id, first_name, last_name, email,
             position, role
@@ -50,6 +115,48 @@ $eventStatement = $pdo->query(
 
 $events = $eventStatement->fetchAll();
 
+$postStatement = $pdo->prepare(
+    'SELECT posts.id,
+            posts.content,
+            posts.created_at,
+            users.first_name,
+            users.last_name,
+            users.position,
+            (SELECT COUNT(*) FROM reactions WHERE reactions.post_id = posts.id) AS reaction_count,
+            (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS comment_count,
+            EXISTS (
+                SELECT 1 FROM reactions
+                WHERE reactions.post_id = posts.id
+                AND reactions.user_id = :user_id
+            ) AS user_reacted
+     FROM posts
+     INNER JOIN users ON users.id = posts.user_id
+     WHERE posts.status = "published"
+     ORDER BY posts.created_at DESC
+     LIMIT 10'
+);
+$postStatement->execute(['user_id' => $userId]);
+$posts = $postStatement->fetchAll();
+
+$commentStatement = $pdo->prepare(
+    'SELECT comments.post_id,
+            comments.comment_content,
+            comments.created_at,
+            users.first_name,
+            users.last_name
+     FROM comments
+     INNER JOIN users ON users.id = comments.user_id
+     WHERE comments.post_id = :post_id
+     ORDER BY comments.created_at ASC
+     LIMIT 3'
+);
+
+foreach ($posts as &$post) {
+    $commentStatement->execute(['post_id' => $post['id']]);
+    $post['comments'] = $commentStatement->fetchAll();
+}
+unset($post);
+
 $billStatement = $pdo->prepare(
     'SELECT wb.id, wb.billing_period, wb.total_amount AS amount, wb.due_date, wb.status
      FROM water_bills wb
@@ -62,99 +169,79 @@ $billStatement = $pdo->prepare(
 $billStatement->execute(['user_id' => $userId]);
 $currentBill = $billStatement->fetch();
 
-$notificationStatement = $pdo->prepare(
-    'SELECT COUNT(*) AS unread_count
-     FROM notifications
-     WHERE user_id = :user_id
-     AND is_read = FALSE'
-);
-
-$notificationStatement->execute(['user_id' => $userId]);
-$notificationData = $notificationStatement->fetch();
-$unreadNotifications = (int) ($notificationData['unread_count'] ?? 0);
-
 require_once __DIR__ . '/includes/header.php';
 ?>
 
-<section class="dashboard-intro">
-    <div>
-        <p class="eyebrow">Faculty workspace</p>
-        <h1>Welcome, <?= e($user['first_name']) ?>!</h1>
-        <p><?= e($user['position'] ?? 'Faculty Member') ?></p>
-    </div>
-
-    <div class="notification-badge">
-        <strong><?= $unreadNotifications ?></strong>
-        <span>Unread notifications</span>
-    </div>
-</section>
-
-<section class="dashboard-overview">
-    <div class="card profile-card">
-        <div class="card-heading">
-            <div>
-                <p class="eyebrow">Account overview</p>
-                <h2>Faculty Profile</h2>
-            </div>
-            <span class="card-mark">ID</span>
+<section class="dashboard-top">
+    <div class="dashboard-main">
+        <div class="dashboard-intro">
+        <div>
+            <p class="eyebrow">Faculty workspace</p>
+            <h1>Welcome, <?= e($user['first_name']) ?>!</h1>
+            <p><?= e($user['position'] ?? 'Faculty Member') ?></p>
         </div>
 
-        <dl class="profile-details">
-            <div>
-                <dt>Name</dt>
-                <dd><?= e($user['first_name'] . ' ' . $user['last_name']) ?></dd>
+        <div class="intro-bill">
+            <div class="card-heading">
+                <div>
+                    <p class="eyebrow">Utilities</p>
+                    <h2>Water Bill Summary</h2>
+                </div>
+                <?php if ($currentBill): ?>
+                    <span class="status <?= e($currentBill['status']) ?>">
+                        <?= e(ucwords(str_replace('_', ' ', $currentBill['status']))) ?>
+                    </span>
+                <?php endif; ?>
             </div>
-            <div>
-                <dt>Employee ID</dt>
-                <dd><?= e($user['employee_id']) ?></dd>
-            </div>
-            <div>
-                <dt>Email</dt>
-                <dd><?= e($user['email']) ?></dd>
-            </div>
-            <div>
-                <dt>Position</dt>
-                <dd><?= e($user['position'] ?? 'Not specified') ?></dd>
-            </div>
-        </dl>
-    </div>
 
-    <div class="card bill-card">
-        <div class="card-heading">
-            <div>
-                <p class="eyebrow">Utilities</p>
-                <h2>Water Bill Summary</h2>
-            </div>
             <?php if ($currentBill): ?>
-                <span class="status <?= e($currentBill['status']) ?>">
-                    <?= e(ucwords(str_replace('_', ' ', $currentBill['status']))) ?>
-                </span>
+                <div class="bill-amount">
+                    <span>Amount due</span>
+                    <strong>₱<?= number_format((float) $currentBill['amount'], 2) ?></strong>
+                </div>
+
+                <div class="bill-meta">
+                    <p><strong>Billing period</strong><?= e($currentBill['billing_period']) ?></p>
+                    <p><strong>Due date</strong><?= e($currentBill['due_date']) ?></p>
+                </div>
+
+                <?php if ($currentBill['status'] !== 'paid'): ?>
+                    <a
+                        href="#"
+                        class="button small"
+                        onclick="alert('Water bill payment page will be added next.'); return false;"
+                    >
+                        View Payment
+                    </a>
+                <?php endif; ?>
+            <?php else: ?>
+                <p>No water bill is currently available.</p>
             <?php endif; ?>
         </div>
+        </div>
 
-        <?php if ($currentBill): ?>
-            <div class="bill-amount">
-                <span>Amount due</span>
-                <strong>₱<?= number_format((float) $currentBill['amount'], 2) ?></strong>
+        <div class="card post-composer">
+            <div class="composer-heading">
+                <span class="avatar" aria-hidden="true">
+                    <?= e(strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1))) ?>
+                </span>
+                <div>
+                    <strong>Create a post</strong>
+                    <small>Share an update with your faculty community</small>
+                </div>
             </div>
-
-            <div class="bill-meta">
-                <p><strong>Billing period</strong><?= e($currentBill['billing_period']) ?></p>
-                <p><strong>Due date</strong><?= e($currentBill['due_date']) ?></p>
-            </div>
-
-            <?php if ($currentBill['status'] !== 'paid'): ?>
-                <a
-                    href="#"
-                    class="button small"
-                    onclick="alert('Water bill payment page will be added next.'); return false;"
-                >
-                    View Payment
-                </a>
-            <?php endif; ?>
-        <?php else: ?>
-            <p>No water bill is currently available.</p>
-        <?php endif; ?>
+            <form method="post">
+                <input type="hidden" name="action" value="create_post">
+                <textarea name="post_content" rows="3" maxlength="2000" placeholder="What would you like to share?" required></textarea>
+                <div class="composer-actions">
+                    <button type="button" class="attachment-button">
+                        <span aria-hidden="true">+</span>
+                        Add Attachments
+                    </button>
+                    <button type="submit" class="button post-submit">Publish Post</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div class="card quick-actions-card">
@@ -174,36 +261,68 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </section>
 
-<section class="dashboard-feeds">
-    <div class="content-section">
+<section class="dashboard-feeds" id="community-feed">
+    <div class="content-section community-feed">
         <div class="section-heading">
             <div>
-                <p class="eyebrow">Stay informed</p>
-                <h2>Latest Announcements</h2>
+                <p class="eyebrow">Community activity</p>
+                <h2>Faculty Feed</h2>
             </div>
         </div>
 
-        <?php if (empty($announcements)): ?>
+        <?php if (empty($posts)): ?>
             <div class="card empty-state">
-                <p>No announcements available.</p>
+                <p>No community posts yet.</p>
             </div>
         <?php else: ?>
             <div class="feed-list">
-                <?php foreach ($announcements as $announcement): ?>
-                    <article class="card announcement">
-                        <h3><?= e($announcement['title']) ?></h3>
-                        <p><?= nl2br(e($announcement['content'])) ?></p>
-                        <small>
-                            Posted by <?= e($announcement['author']) ?>
-                            on <?= e($announcement['created_at']) ?>
-                        </small>
+                <?php foreach ($posts as $post): ?>
+                    <article class="card social-post">
+                        <header class="post-author">
+                            <span class="avatar" aria-hidden="true">
+                                <?= e(strtoupper(substr($post['first_name'], 0, 1) . substr($post['last_name'], 0, 1))) ?>
+                            </span>
+                            <div>
+                                <strong><?= e($post['first_name'] . ' ' . $post['last_name']) ?></strong>
+                                <small><?= e($post['position'] ?? 'Faculty Member') ?> · <?= e($post['created_at']) ?></small>
+                            </div>
+                        </header>
+                        <p class="post-content"><?= nl2br(e($post['content'])) ?></p>
+                        <div class="post-summary">
+                            <span><?= (int) $post['reaction_count'] ?> likes</span>
+                            <span><?= (int) $post['comment_count'] ?> comments</span>
+                        </div>
+                        <div class="post-actions">
+                            <form method="post">
+                                <input type="hidden" name="action" value="react">
+                                <input type="hidden" name="post_id" value="<?= (int) $post['id'] ?>">
+                                <button type="submit" class="post-action <?= $post['user_reacted'] ? 'is-active' : '' ?>">
+                                    <?= $post['user_reacted'] ? 'Liked' : 'Like' ?>
+                                </button>
+                            </form>
+                            <button type="button" class="post-action comment-toggle" aria-expanded="false">Comment</button>
+                        </div>
+                        <div class="post-comments">
+                            <?php foreach ($post['comments'] as $comment): ?>
+                                <div class="comment-item">
+                                    <strong><?= e($comment['first_name'] . ' ' . $comment['last_name']) ?></strong>
+                                    <p><?= e($comment['comment_content']) ?></p>
+                                </div>
+                            <?php endforeach; ?>
+                            <form method="post" class="comment-form">
+                                <input type="hidden" name="action" value="comment">
+                                <input type="hidden" name="post_id" value="<?= (int) $post['id'] ?>">
+                                <input type="text" name="comment_content" placeholder="Write a comment..." maxlength="1000" required>
+                                <button type="submit" class="button small">Post</button>
+                            </form>
+                        </div>
                     </article>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
     </div>
 
-    <div class="content-section">
+    <div class="content-section feed-updates">
         <div class="section-heading">
             <div>
                 <p class="eyebrow">Plan ahead</p>
@@ -233,5 +352,15 @@ require_once __DIR__ . '/includes/header.php';
         <?php endif; ?>
     </div>
 </section>
+
+<script>
+    document.querySelectorAll('.comment-toggle').forEach((button) => {
+        button.addEventListener('click', () => {
+            const comments = button.closest('.social-post').querySelector('.post-comments');
+            const isOpen = comments.classList.toggle('is-open');
+            button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+    });
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

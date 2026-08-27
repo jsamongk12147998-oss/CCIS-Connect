@@ -134,6 +134,21 @@ select {
     background: #0f4f82;
 }
 
+.forgot-password-button {
+    align-self: flex-end;
+    margin-top: 10px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #1769aa;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.forgot-password-button:hover {
+    text-decoration: underline;
+}
+
 .button.button-google {
     background: white;
     color: #5f6368;

@@ -101,6 +101,7 @@ require_once __DIR__ . '/includes/header.php';
             required
         >
 
+        <button type="button" class="forgot-password-button">Forgot password?</button>
         <button type="submit" class="button">Login</button>
         <a href="#" class="button button-google">
             <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="margin-right: 10px;">

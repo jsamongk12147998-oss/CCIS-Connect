@@ -42,6 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Password must be at least 8 characters.';
     }
 
+    if (!preg_match('/[a-z]/', $password)
+        || !preg_match('/[A-Z]/', $password)
+        || !preg_match('/[0-9]/', $password)
+        || !preg_match('/[^a-zA-Z0-9]/', $password)
+    ) {
+        $errors[] = 'Password must include lowercase and uppercase letters, a number, and a special character.';
+    }
+
     if ($password !== $confirmPassword) {
         $errors[] = 'Passwords do not match.';
     }
@@ -150,6 +158,9 @@ require_once __DIR__ . '/includes/header.php';
             type="password"
             id="password"
             name="password"
+            minlength="8"
+            pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}"
+            title="Use at least 8 characters with lowercase and uppercase letters, a number, and a special character."
             required
         >
 

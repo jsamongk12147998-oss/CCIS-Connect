@@ -2,15 +2,12 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/config/database.php';
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/auth.php';
 
-if (isLoggedIn()) {
-    header('Location: dashboard.php');
-    exit;
-}
+requireAdministrator();
 
-$pageTitle = 'Faculty Registration';
+$pageTitle = 'Register Faculty';
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -85,18 +82,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'position' => $position !== '' ? $position : null
             ]);
 
-            header('Location: login.php?registered=1');
+            header('Location: admin_dashboard.php?registered=1');
             exit;
         }
     }
 }
 
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="auth-card">
-    <h1>Faculty Registration</h1>
-    <p>Create your CCIS Connect faculty account.</p>
+    <h1>Register Faculty</h1>
+    <p>Create an active CCIS Connect account for a faculty member.</p>
 
     <?php if (!empty($errors)): ?>
         <div class="alert error">
@@ -110,75 +107,32 @@ require_once __DIR__ . '/includes/header.php';
 
     <form method="POST" action="register.php">
         <label for="employee_id">Employee ID</label>
-        <input
-            type="text"
-            id="employee_id"
-            name="employee_id"
-            value="<?= e($_POST['employee_id'] ?? '') ?>"
-            required
-        >
+        <input type="text" id="employee_id" name="employee_id" value="<?= e($_POST['employee_id'] ?? '') ?>" required>
 
         <label for="first_name">First Name</label>
-        <input
-            type="text"
-            id="first_name"
-            name="first_name"
-            value="<?= e($_POST['first_name'] ?? '') ?>"
-            required
-        >
+        <input type="text" id="first_name" name="first_name" value="<?= e($_POST['first_name'] ?? '') ?>" required>
 
         <label for="last_name">Last Name</label>
-        <input
-            type="text"
-            id="last_name"
-            name="last_name"
-            value="<?= e($_POST['last_name'] ?? '') ?>"
-            required
-        >
+        <input type="text" id="last_name" name="last_name" value="<?= e($_POST['last_name'] ?? '') ?>" required>
 
         <label for="email">Email Address</label>
-        <input
-            type="email"
-            id="email"
-            name="email"
-            value="<?= e($_POST['email'] ?? '') ?>"
-            required
-        >
+        <input type="email" id="email" name="email" value="<?= e($_POST['email'] ?? '') ?>" required>
 
         <label for="position">Position</label>
-        <input
-            type="text"
-            id="position"
-            name="position"
-            value="<?= e($_POST['position'] ?? '') ?>"
-        >
+        <input type="text" id="position" name="position" value="<?= e($_POST['position'] ?? '') ?>">
 
         <label for="password">Password</label>
-        <input
-            type="password"
-            id="password"
-            name="password"
-            minlength="8"
-            pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}"
-            title="Use at least 8 characters with lowercase and uppercase letters, a number, and a special character."
-            required
-        >
+        <input type="password" id="password" name="password" minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}" title="Use at least 8 characters with lowercase and uppercase letters, a number, and a special character." required>
 
         <label for="confirm_password">Confirm Password</label>
-        <input
-            type="password"
-            id="confirm_password"
-            name="confirm_password"
-            required
-        >
+        <input type="password" id="confirm_password" name="confirm_password" required>
 
         <button type="submit" class="button">Register</button>
     </form>
 
     <p class="form-link">
-        Already registered?
-        <a href="login.php">Log in here</a>.
+        <a href="admin_dashboard.php">Back to admin dashboard</a>
     </p>
 </div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

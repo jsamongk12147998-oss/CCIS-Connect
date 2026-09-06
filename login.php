@@ -12,8 +12,19 @@ if (isLoggedIn()) {
 
 $pageTitle = 'Login';
 $error = '';
+$lockoutDuration = 30;
+$failedAttempts = (int) ($_SESSION['login_failed_attempts'] ?? 0);
+$lockoutUntil = (int) ($_SESSION['login_lockout_until'] ?? 0);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($lockoutUntil > 0 && $lockoutUntil <= time()) {
+    unset($_SESSION['login_failed_attempts'], $_SESSION['login_lockout_until']);
+    $failedAttempts = 0;
+    $lockoutUntil = 0;
+}
+
+$isLockedOut = $lockoutUntil > time();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isLockedOut) {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -34,9 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $statement->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            if ($user['status'] !== 'active') {
+            if ($user['role'] === 'administrator') {
+                $error = 'Administrator accounts must use the administrator sign-in.';
+            } elseif ($user['status'] !== 'active') {
                 $error = 'Your account is not active.';
             } else {
+                unset($_SESSION['login_failed_attempts'], $_SESSION['login_lockout_until']);
                 session_regenerate_id(true);
 
                 $_SESSION['user_id'] = $user['id'];
@@ -44,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['first_name'] = $user['first_name'];
                 $_SESSION['last_name'] = $user['last_name'];
                 $_SESSION['role'] = $user['role'];
+                unset($_SESSION['admin_authenticated']);
 
                 $logStatement = $pdo->prepare(
                     'INSERT INTO audit_logs (user_id, action, ip_address)
@@ -60,9 +75,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         } else {
-            $error = 'Invalid email or password.';
+            $failedAttempts++;
+
+            if ($failedAttempts >= 3) {
+                $_SESSION['login_failed_attempts'] = 0;
+                $_SESSION['login_lockout_until'] = time() + $lockoutDuration;
+                $lockoutUntil = (int) $_SESSION['login_lockout_until'];
+                $isLockedOut = true;
+                $error = 'Too many failed attempts. Please try again in 30 seconds.';
+            } else {
+                $_SESSION['login_failed_attempts'] = $failedAttempts;
+                $remainingAttempts = 3 - $failedAttempts;
+                $error = "Invalid email or password. {$remainingAttempts} attempt(s) remaining.";
+            }
         }
     }
+}
+
+if ($isLockedOut && $error === '') {
+    $remainingSeconds = max(1, $lockoutUntil - time());
+    $error = "Too many failed attempts. Please try again in {$remainingSeconds} seconds.";
 }
 
 require_once __DIR__ . '/includes/header.php';
@@ -91,6 +123,7 @@ require_once __DIR__ . '/includes/header.php';
             id="email"
             name="email"
             required
+            <?= $isLockedOut ? 'disabled' : '' ?>
         >
 
         <label for="password">Password</label>
@@ -99,10 +132,11 @@ require_once __DIR__ . '/includes/header.php';
             id="password"
             name="password"
             required
+            <?= $isLockedOut ? 'disabled' : '' ?>
         >
 
-        <button type="button" class="forgot-password-button">Forgot password?</button>
-        <button type="submit" class="button">Login</button>
+        <button type="button" class="forgot-password-button" <?= $isLockedOut ? 'disabled' : '' ?>>Forgot password?</button>
+        <button type="submit" class="button" <?= $isLockedOut ? 'disabled' : '' ?>>Login</button>
         <a href="#" class="button button-google">
             <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="margin-right: 10px;">
               <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.3l6.8-6.8C35.5 2.6 30.2 0 24 0 14.8 0 7 5.4 3 13.5l8.1 6.3C13.2 12.6 18 9.5 24 9.5z"/>
@@ -115,8 +149,8 @@ require_once __DIR__ . '/includes/header.php';
     </form>
 
     <p class="form-link">
-        Do not have an account?
-        <a href="register.php">Register as faculty</a>.
+        Need an account?
+        Contact an administrator for registration.
     </p>
 </div>
 

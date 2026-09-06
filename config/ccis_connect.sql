@@ -243,6 +243,11 @@ CREATE TABLE posts (
 
     content TEXT NOT NULL,
 
+    attachment_path VARCHAR(255) DEFAULT NULL,
+    attachment_name VARCHAR(255) DEFAULT NULL,
+    attachment_type ENUM('image', 'video', 'file') DEFAULT NULL,
+    attachment_size INT UNSIGNED DEFAULT NULL,
+
     status ENUM('published', 'hidden', 'deleted')
         NOT NULL DEFAULT 'published',
 
@@ -607,7 +612,7 @@ INSERT INTO users (
     'System',
     'Administrator',
     'admin@ccis.local',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llCqRZ5T6Y6Qx5Vf3v8Xe',
+    '$2y$10$rOxZ6D8NDwSs0wMl8VWFYe67jd/DaZiHEXZmrB..FYe65p9RIPINu',
     'System Administrator',
     'administrator',
     'active'

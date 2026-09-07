@@ -33,17 +33,6 @@ $logoutPage = $isAdminPage ? 'admin_logout.php' : $rootPrefix . 'logout.php';
                 <?php elseif (!isAdministratorSession() && ($pageTitle ?? '') !== 'Dashboard'): ?>
                     <a href="<?= $rootPrefix ?>dashboard.php">Dashboard</a>
                 <?php endif; ?>
-                <details class="create-menu">
-                    <summary class="create-button">
-                        <span class="plus-icon" aria-hidden="true">+</span>
-                        Create
-                    </summary>
-                    <div class="create-popup">
-                        <button type="button" class="create-action">Create an Event</button>
-                        <button type="button" class="create-action">Schedule a Meeting</button>
-                        <button type="button" class="create-action">Create a Group</button>
-                    </div>
-                </details>
                 <details class="profile-menu">
                     <summary class="profile-button" aria-label="Open profile menu">
                         <img src="<?= $rootPrefix ?>assets/user-regular.png" alt="Profile">

@@ -173,8 +173,113 @@ nav a {
     cursor: pointer;
 }
 
+.profile-popup form {
+    display: block;
+    margin: 0;
+}
+
 .profile-action:hover {
     background: #f1f5f9;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.detail-grid > div {
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    overflow-wrap: anywhere;
+}
+
+.detail-grid dt {
+    margin-bottom: 6px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.detail-grid dd {
+    margin: 0;
+    color: #123c69;
+    font-weight: 600;
+}
+
+.button-row,
+.filter-form,
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.button-row form {
+    display: inline-flex;
+}
+
+.secondary-button {
+    background: #475569;
+}
+
+.danger-button {
+    background: #b91c1c;
+}
+
+.pagination {
+    margin-top: 18px;
+}
+
+.pagination a {
+    padding: 7px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.receipt-card {
+    max-width: 850px;
+    margin: 20px auto;
+    padding: 32px;
+    background: #fff;
+}
+
+.filter-form {
+    margin: 18px 0;
+}
+
+.filter-form label {
+    margin: 0;
+}
+
+.filter-form .button {
+    margin-top: 0;
+}
+
+@media print {
+    .main-header,
+    .main-footer,
+    .no-print {
+        display: none !important;
+    }
+
+    body,
+    main.container {
+        background: #fff;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .receipt-card {
+        box-shadow: none;
+        border: 0;
+    }
 }
 
 main.container {
@@ -224,6 +329,29 @@ select {
     font-size: 15px;
 }
 
+.password-input-group {
+    display: flex;
+    width: 100%;
+}
+
+.password-input-group input {
+    flex: 1;
+    min-width: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.password-visibility-toggle {
+    padding: 0 12px;
+    border: 1px solid #cbd5e1;
+    border-left: 0;
+    border-radius: 0 5px 5px 0;
+    background: #f8fafc;
+    color: #1769aa;
+    font: inherit;
+    cursor: pointer;
+}
+
 input:disabled,
 button:disabled {
     cursor: not-allowed;
@@ -260,6 +388,7 @@ button:disabled {
     color: #1769aa;
     cursor: pointer;
     font-size: 14px;
+    text-decoration: none;
 }
 
 .forgot-password-button:hover {

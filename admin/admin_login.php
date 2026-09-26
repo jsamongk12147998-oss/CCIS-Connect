@@ -6,8 +6,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 if (isAdministratorSession()) {
-    header('Location: admin_dashboard.php');
-    exit;
+    redirect('admin_dashboard.php');
 }
 
 $pageTitle = 'Administrator Sign In';
@@ -25,8 +24,9 @@ if ($lockoutUntil > 0 && $lockoutUntil <= time()) {
 $isLockedOut = $lockoutUntil > time();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isLockedOut) {
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+    requireValidCsrfToken();
+    $email = trim((string) ($_POST['email'] ?? ''));
+    $password = (string) ($_POST['password'] ?? '');
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
@@ -42,32 +42,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isLockedOut) {
         $statement->execute(['email' => $email]);
         $user = $statement->fetch();
 
-        if ($user && $user['role'] === 'administrator' && password_verify($password, $user['password'])) {
+        if ($user && $user['role'] === 'administrator' && password_verify($password, (string) $user['password'])) {
             if ($user['status'] !== 'active') {
                 $error = 'This administrator account is not active.';
             } else {
                 unset($_SESSION['admin_login_failed_attempts'], $_SESSION['admin_login_lockout_until']);
                 session_regenerate_id(true);
 
-                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_id'] = (int) $user['id'];
                 $_SESSION['employee_id'] = $user['employee_id'];
                 $_SESSION['first_name'] = $user['first_name'];
                 $_SESSION['last_name'] = $user['last_name'];
                 $_SESSION['role'] = $user['role'];
-                $_SESSION['admin_authenticated'] = true;
 
                 $logStatement = $pdo->prepare(
-                    'INSERT INTO audit_logs (user_id, action, ip_address)
-                     VALUES (:user_id, :action, :ip_address)'
+                    'INSERT INTO audit_logs (user_id, action, description, ip_address)
+                     VALUES (:user_id, :action, :description, :ip_address)'
                 );
                 $logStatement->execute([
                     'user_id' => $user['id'],
-                    'action' => 'Administrator logged in',
+                    'action' => 'LOGIN',
+                    'description' => 'Administrator logged in',
                     'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
                 ]);
 
-                header('Location: admin_dashboard.php');
-                exit;
+                redirect('admin_dashboard.php');
             }
         } else {
             $failedAttempts++;
@@ -101,12 +100,11 @@ require_once __DIR__ . '/../includes/header.php';
     <p>Use your administrator credentials to manage CCIS Connect.</p>
 
     <?php if ($error !== ''): ?>
-        <div class="alert error">
-            <?= e($error) ?>
-        </div>
+        <div class="alert error"><?= e($error) ?></div>
     <?php endif; ?>
 
     <form method="POST" action="admin_login.php">
+        <?= csrfField() ?>
         <label for="email">Administrator Email</label>
         <input type="email" id="email" name="email" required <?= $isLockedOut ? 'disabled' : '' ?>>
 

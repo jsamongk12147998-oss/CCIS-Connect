@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/billing.php';
 
 requireLogin();
 
@@ -13,6 +14,7 @@ $postError = $_SESSION['post_error'] ?? '';
 unset($_SESSION['post_error']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
     $action = $_POST['action'] ?? '';
     $postId = (int) ($_POST['post_id'] ?? 0);
 
@@ -345,11 +347,15 @@ foreach ($posts as &$post) {
 unset($post);
 
 $billStatement = $pdo->prepare(
-    'SELECT wb.id, wb.billing_period, wb.total_amount AS amount, wb.due_date, wb.status
+    'SELECT wb.id, wb.bill_number, wb.billing_period, wb.amount_due, wb.due_date, wb.status,
+            COALESCE(p.amount_paid, 0.00) AS amount_paid
      FROM water_bills wb
-     INNER JOIN water_accounts wa ON wb.water_account_id = wa.id
-     WHERE wa.user_id = :user_id
-     ORDER BY wb.due_date DESC
+     LEFT JOIN (
+         SELECT bill_id, SUM(amount) AS amount_paid
+         FROM payments WHERE status = "paid" GROUP BY bill_id
+     ) p ON p.bill_id = wb.id
+     WHERE wb.faculty_id = :user_id
+     ORDER BY wb.due_date DESC, wb.id DESC
      LIMIT 1'
 );
 
@@ -375,32 +381,32 @@ require_once __DIR__ . '/includes/header.php';
                     <h2>Water Bill Summary</h2>
                 </div>
                 <?php if ($currentBill): ?>
-                    <span class="status <?= e($currentBill['status']) ?>">
-                        <?= e(ucwords(str_replace('_', ' ', $currentBill['status']))) ?>
+                    <?php $currentBillStatus = billStatus($currentBill); ?>
+                    <span class="status <?= e($currentBillStatus) ?>">
+                        <?= e(ucwords(str_replace('_', ' ', $currentBillStatus))) ?>
                     </span>
                 <?php endif; ?>
             </div>
 
             <?php if ($currentBill): ?>
+                <?php
+                $billDueCents = parseNonNegativePhpAmount((string) $currentBill['amount_due']);
+                $billPaidCents = min($billDueCents, parseNonNegativePhpAmount((string) $currentBill['amount_paid']));
+                $billBalanceCents = max(0, $billDueCents - $billPaidCents);
+                ?>
                 <div class="bill-amount">
                     <span>Amount due</span>
-                    <strong>₱<?= number_format((float) $currentBill['amount'], 2) ?></strong>
+                    <strong><?= e(formatPhpCents($billBalanceCents)) ?></strong>
                 </div>
 
                 <div class="bill-meta">
                     <p><strong>Billing period</strong><?= e($currentBill['billing_period']) ?></p>
                     <p><strong>Due date</strong><?= e($currentBill['due_date']) ?></p>
+                    <p><strong>Bill amount</strong><?= e(formatPhpAmount((string) $currentBill['amount_due'])) ?></p>
+                    <p><strong>Amount paid</strong><?= e(formatPhpCents($billPaidCents)) ?></p>
                 </div>
 
-                <?php if ($currentBill['status'] !== 'paid'): ?>
-                    <a
-                        href="#"
-                        class="button small"
-                        onclick="alert('Water bill payment page will be added next.'); return false;"
-                    >
-                        View Payment
-                    </a>
-                <?php endif; ?>
+                <a class="button small" href="faculty/water-bill.php?id=<?= (int) $currentBill['id'] ?>">View Water Bill</a>
             <?php else: ?>
                 <p>No water bill is currently available.</p>
             <?php endif; ?>
@@ -421,6 +427,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="alert error"><?= e($postError) ?></div>
             <?php endif; ?>
             <form method="post" enctype="multipart/form-data">
+                <?= csrfField() ?>
                 <input type="hidden" name="action" value="create_post">
                 <textarea name="post_content" rows="3" maxlength="2000" placeholder="What would you like to share?"></textarea>
                 <input type="file" id="attachment" name="attachment" class="attachment-input" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,application/pdf,text/plain,.doc,.docx,.xls,.xlsx,.zip">
@@ -440,10 +447,6 @@ require_once __DIR__ . '/includes/header.php';
                             <summary class="composer-more-button" aria-label="More create options" title="More create options">
                                 <span aria-hidden="true">&#8942;</span>
                             </summary>
-                            <div class="composer-popup">
-                                <button type="button" class="composer-popup-action">Create an Event</button>
-                                <button type="button" class="composer-popup-action">Schedule a Meeting</button>
-                            </div>
                         </details>
                     </div>
                 </div>
@@ -460,10 +463,9 @@ require_once __DIR__ . '/includes/header.php';
         </div>
 
         <div class="quick-actions">
-            <a href="#" class="action-link">View Faculty Groups</a>
-            <a href="#" class="action-link">View Discussions</a>
-            <a href="#" class="action-link">View Events</a>
-            <a href="#" class="action-link">Open Messages</a>
+            <a href="faculty/water-bill.php" class="action-link">My Water Bills</a>
+            <a href="faculty/payments.php" class="action-link">Payment Transactions</a>
+            <a href="#community-feed" class="action-link">View Faculty Feed</a>
         </div>
     </div>
 </section>
@@ -518,6 +520,7 @@ require_once __DIR__ . '/includes/header.php';
                         </div>
                         <div class="post-actions">
                             <form method="post">
+                                <?= csrfField() ?>
                                 <input type="hidden" name="action" value="react">
                                 <input type="hidden" name="post_id" value="<?= (int) $post['id'] ?>">
                                 <button type="submit" class="post-action <?= $post['user_reacted'] ? 'is-active' : '' ?>">
@@ -537,6 +540,7 @@ require_once __DIR__ . '/includes/header.php';
                         </div>
                         <?php if ((int) $post['user_id'] === $userId): ?>
                             <form method="post" id="edit-form-<?= (int) $post['id'] ?>" class="post-edit-form" hidden>
+                                <?= csrfField() ?>
                                 <input type="hidden" name="post_id" value="<?= (int) $post['id'] ?>">
                                 <textarea name="post_content" rows="3" maxlength="2000"><?= e($post['content']) ?></textarea>
                                 <div class="post-edit-actions">
@@ -554,6 +558,7 @@ require_once __DIR__ . '/includes/header.php';
                                 </div>
                             <?php endforeach; ?>
                             <form method="post" class="comment-form">
+                                <?= csrfField() ?>
                                 <input type="hidden" name="action" value="comment">
                                 <input type="hidden" name="post_id" value="<?= (int) $post['id'] ?>">
                                 <input type="text" name="comment_content" placeholder="Write a comment..." maxlength="1000" required>

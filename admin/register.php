@@ -11,6 +11,7 @@ $pageTitle = 'Register Faculty';
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
     $employeeId = trim($_POST['employee_id'] ?? '');
     $firstName = trim($_POST['first_name'] ?? '');
     $lastName = trim($_POST['last_name'] ?? '');
@@ -35,16 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'A valid email address is required.';
     }
 
-    if (strlen($password) < 8) {
-        $errors[] = 'Password must be at least 8 characters.';
-    }
-
-    if (!preg_match('/[a-z]/', $password)
-        || !preg_match('/[A-Z]/', $password)
-        || !preg_match('/[0-9]/', $password)
-        || !preg_match('/[^a-zA-Z0-9]/', $password)
-    ) {
-        $errors[] = 'Password must include lowercase and uppercase letters, a number, and a special character.';
+    $passwordError = passwordPolicyError($password);
+    if ($passwordError !== null) {
+        $errors[] = $passwordError;
     }
 
     if ($password !== $confirmPassword) {
@@ -106,6 +100,7 @@ require_once __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 
     <form method="POST" action="register.php">
+        <?= csrfField() ?>
         <label for="employee_id">Employee ID</label>
         <input type="text" id="employee_id" name="employee_id" value="<?= e($_POST['employee_id'] ?? '') ?>" required>
 

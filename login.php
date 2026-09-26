@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/config/google.php';
 
 if (isLoggedIn()) {
     header('Location: dashboard.php');
@@ -11,6 +12,7 @@ if (isLoggedIn()) {
 }
 
 $pageTitle = 'Login';
+$googleUrl = isGoogleConfigured() ? googleLoginUrl() : null;
 $error = '';
 $lockoutDuration = 30;
 $failedAttempts = (int) ($_SESSION['login_failed_attempts'] ?? 0);
@@ -25,6 +27,7 @@ if ($lockoutUntil > 0 && $lockoutUntil <= time()) {
 $isLockedOut = $lockoutUntil > time();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isLockedOut) {
+    requireValidCsrfToken();
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -110,6 +113,18 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     <?php endif; ?>
 
+    <?php if (isset($_GET['inactive'])): ?>
+        <div class="alert error" role="alert">
+            This account is not active. Contact an administrator for assistance.
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['google_error'])): ?>
+        <div class="alert error" role="alert">
+            Google sign-in could not be completed. Use your CCIS Connect password or contact an administrator.
+        </div>
+    <?php endif; ?>
+
     <?php if ($error !== ''): ?>
         <div class="alert error">
             <?= e($error) ?>
@@ -135,9 +150,11 @@ require_once __DIR__ . '/includes/header.php';
             <?= $isLockedOut ? 'disabled' : '' ?>
         >
 
-        <button type="button" class="forgot-password-button" <?= $isLockedOut ? 'disabled' : '' ?>>Forgot password?</button>
+        <?= csrfField() ?>
+        <a href="forgot-password.php" class="forgot-password-button">Forgot password?</a>
         <button type="submit" class="button" <?= $isLockedOut ? 'disabled' : '' ?>>Login</button>
-        <a href="#" class="button button-google">
+        <?php if ($googleUrl !== null): ?>
+        <a href="<?= e($googleUrl) ?>" class="button button-google">
             <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="margin-right: 10px;">
               <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.3l6.8-6.8C35.5 2.6 30.2 0 24 0 14.8 0 7 5.4 3 13.5l8.1 6.3C13.2 12.6 18 9.5 24 9.5z"/>
               <path fill="#4285F4" d="M46.5 24.5c0-1.5-.1-3-0.4-4.5H24v9h12.7c-0.6 3-2.3 5.5-4.8 7.2l8.1 6.3C43.5 37.5 46.5 31.5 46.5 24.5z"/>
@@ -146,6 +163,11 @@ require_once __DIR__ . '/includes/header.php';
             </svg>
             Continue with Google
         </a>
+        <?php else: ?>
+        <button type="button" class="button button-google" disabled title="Configure Google OAuth to enable this sign-in option">
+            Continue with Google (not configured)
+        </button>
+        <?php endif; ?>
     </form>
 
     <p class="form-link">

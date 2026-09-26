@@ -3,9 +3,7 @@
    Web-Based Faculty Community and Engagement Platform
    ========================================================= */
 
-DROP DATABASE IF EXISTS ccis_connect;
-
-CREATE DATABASE ccis_connect
+CREATE DATABASE IF NOT EXISTS ccis_connect
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
@@ -40,6 +38,20 @@ CREATE TABLE users (
 
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE password_reset_tokens (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL,
+    used_at TIMESTAMP NULL DEFAULT NULL,
+    INDEX idx_password_reset_user_expiry (user_id, expires_at),
+    CONSTRAINT fk_password_reset_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
 );
 
 
@@ -356,7 +368,10 @@ CREATE TABLE water_bills (
 
     water_account_id INT UNSIGNED NOT NULL,
 
+    bill_number VARCHAR(50) DEFAULT NULL,
+    faculty_id INT UNSIGNED DEFAULT NULL,
     billing_period VARCHAR(50) NOT NULL,
+    description VARCHAR(255) DEFAULT NULL,
 
     previous_reading DECIMAL(10,2)
         NOT NULL DEFAULT 0.00,
@@ -376,13 +391,19 @@ CREATE TABLE water_bills (
     additional_charge DECIMAL(10,2)
         NOT NULL DEFAULT 0.00,
 
-    total_amount DECIMAL(10,2)
+    total_amount DECIMAL(12,2)
         NOT NULL DEFAULT 0.00,
+
+    amount_due DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    balance_due DECIMAL(12,2) NOT NULL DEFAULT 0.00,
 
     due_date DATE NOT NULL,
 
     status ENUM(
         'unpaid',
+        'partially_paid',
+        'cancelled',
         'pending_verification',
         'paid',
         'overdue',
@@ -396,10 +417,19 @@ CREATE TABLE water_bills (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP,
 
+    UNIQUE KEY uq_water_bills_bill_number (bill_number),
+    UNIQUE KEY uq_water_bills_faculty_period (faculty_id, billing_period),
+    INDEX idx_water_bills_faculty_due_date (faculty_id, due_date),
+
     CONSTRAINT fk_bill_water_account
         FOREIGN KEY (water_account_id)
         REFERENCES water_accounts(id)
         ON DELETE CASCADE,
+
+    CONSTRAINT fk_water_bill_faculty
+        FOREIGN KEY (faculty_id)
+        REFERENCES users(id)
+        ON DELETE RESTRICT,
 
     CONSTRAINT fk_bill_created_by
         FOREIGN KEY (created_by)
@@ -447,7 +477,12 @@ CREATE TABLE payments (
     payment_status ENUM(
         'pending',
         'verified',
-        'rejected'
+        'rejected',
+        'processing',
+        'paid',
+        'failed',
+        'cancelled',
+        'refunded'
     ) NOT NULL DEFAULT 'pending',
 
     remarks TEXT DEFAULT NULL,
@@ -457,6 +492,32 @@ CREATE TABLE payments (
     payment_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     verified_at DATETIME DEFAULT NULL,
+
+    payment_reference VARCHAR(64) DEFAULT NULL UNIQUE,
+    faculty_id INT UNSIGNED DEFAULT NULL,
+    amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    currency CHAR(3) NOT NULL DEFAULT 'PHP',
+    gateway VARCHAR(30) NOT NULL DEFAULT 'manual',
+    gateway_checkout_id VARCHAR(100) DEFAULT NULL,
+    gateway_checkout_url TEXT DEFAULT NULL,
+    gateway_payment_id VARCHAR(100) DEFAULT NULL,
+    gateway_transaction_id VARCHAR(100) DEFAULT NULL,
+    payment_method VARCHAR(100) DEFAULT NULL,
+    status ENUM('pending', 'processing', 'paid', 'failed', 'rejected', 'cancelled', 'refunded')
+        NOT NULL DEFAULT 'pending',
+    gateway_status VARCHAR(50) DEFAULT NULL,
+    verification_status ENUM('pending', 'verified', 'failed', 'manual_review')
+        NOT NULL DEFAULT 'pending',
+    paid_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uq_payments_payment_reference (payment_reference),
+    UNIQUE KEY uq_payments_gateway_checkout (gateway_checkout_id),
+    UNIQUE KEY uq_payments_gateway_payment (gateway_payment_id),
+    UNIQUE KEY uq_payments_gateway_transaction (gateway_transaction_id),
+    INDEX idx_payments_bill_status (bill_id, status),
+    INDEX idx_payments_faculty_created (faculty_id, created_at),
 
     CONSTRAINT fk_payment_bill
         FOREIGN KEY (bill_id)
@@ -468,6 +529,11 @@ CREATE TABLE payments (
         REFERENCES users(id)
         ON DELETE CASCADE,
 
+    CONSTRAINT fk_payment_faculty
+        FOREIGN KEY (faculty_id)
+        REFERENCES users(id)
+        ON DELETE RESTRICT,
+
     CONSTRAINT fk_payment_method
         FOREIGN KEY (payment_method_id)
         REFERENCES payment_methods(id)
@@ -476,6 +542,24 @@ CREATE TABLE payments (
     CONSTRAINT fk_payment_verified_by
         FOREIGN KEY (verified_by)
         REFERENCES users(id)
+        ON DELETE SET NULL
+);
+
+CREATE TABLE payment_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    gateway_event_id VARCHAR(150) NOT NULL UNIQUE,
+    event_type VARCHAR(100) NOT NULL,
+    payment_id INT UNSIGNED DEFAULT NULL,
+    gateway VARCHAR(30) NOT NULL,
+    processing_status ENUM('received', 'processed', 'ignored', 'failed') NOT NULL DEFAULT 'received',
+    payload LONGTEXT NOT NULL,
+    received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME DEFAULT NULL,
+    error_message TEXT DEFAULT NULL,
+    INDEX idx_payment_events_payment (payment_id, received_at),
+    CONSTRAINT fk_payment_event_payment
+        FOREIGN KEY (payment_id)
+        REFERENCES payments(id)
         ON DELETE SET NULL
 );
 
@@ -494,6 +578,13 @@ CREATE TABLE receipts (
     receipt_file VARCHAR(255) DEFAULT NULL,
 
     issued_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    faculty_id INT UNSIGNED DEFAULT NULL,
+    bill_id INT UNSIGNED DEFAULT NULL,
+    amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    gateway VARCHAR(30) DEFAULT NULL,
+    gateway_transaction_id VARCHAR(100) DEFAULT NULL,
+
+    INDEX idx_receipts_faculty (faculty_id),
 
     CONSTRAINT fk_receipt_payment
         FOREIGN KEY (payment_id)
@@ -524,6 +615,8 @@ CREATE TABLE notifications (
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_notifications_user_created (user_id, created_at),
 
     CONSTRAINT fk_notification_user
         FOREIGN KEY (user_id)
@@ -572,6 +665,8 @@ CREATE TABLE audit_logs (
 
     action VARCHAR(255) NOT NULL,
 
+    description TEXT DEFAULT NULL,
+
     ip_address VARCHAR(45) DEFAULT NULL,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -592,7 +687,7 @@ CREATE TABLE audit_logs (
    A. SAMPLE USERS
 
    The password hash below is for:
-   password
+   Ccis!Orbit2026#Pine
 
    Change these accounts and passwords in a real deployment.
    --------------------------------------------------------- */
@@ -612,7 +707,7 @@ INSERT INTO users (
     'System',
     'Administrator',
     'admin@ccis.local',
-    '$2y$10$rOxZ6D8NDwSs0wMl8VWFYe67jd/DaZiHEXZmrB..FYe65p9RIPINu',
+    '$2y$10$ukcJsIeZTrRtCVCWFUjdkOpiTbJc8rvMRvQT5WsO7fca7O.4f5Vne',
     'System Administrator',
     'administrator',
     'active'
@@ -622,7 +717,7 @@ INSERT INTO users (
     'Juan',
     'Dela Cruz',
     'juan.delacruz@ccis.local',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llCqRZ5T6Y6Qx5Vf3v8Xe',
+    '$2y$10$ukcJsIeZTrRtCVCWFUjdkOpiTbJc8rvMRvQT5WsO7fca7O.4f5Vne',
     'Faculty Member',
     'faculty',
     'active'
@@ -632,7 +727,7 @@ INSERT INTO users (
     'Maria',
     'Santos',
     'maria.santos@ccis.local',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llCqRZ5T6Y6Qx5Vf3v8Xe',
+    '$2y$10$ukcJsIeZTrRtCVCWFUjdkOpiTbJc8rvMRvQT5WsO7fca7O.4f5Vne',
     'Associate Professor',
     'faculty',
     'active'
@@ -642,7 +737,7 @@ INSERT INTO users (
     'Pedro',
     'Reyes',
     'pedro.reyes@ccis.local',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llCqRZ5T6Y6Qx5Vf3v8Xe',
+    '$2y$10$ukcJsIeZTrRtCVCWFUjdkOpiTbJc8rvMRvQT5WsO7fca7O.4f5Vne',
     'Assistant Professor',
     'faculty',
     'active'
